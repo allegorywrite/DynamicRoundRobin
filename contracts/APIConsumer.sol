@@ -5,6 +5,7 @@ import "@chainlink/contracts/src/v0.8/ChainlinkClient.sol";
 
 contract APIConsumer is ChainlinkClient {
     using Chainlink for Chainlink.Request;
+
   
     bytes32 public data;
     address private oracle;

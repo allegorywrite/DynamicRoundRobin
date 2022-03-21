@@ -1,13 +1,20 @@
-const destination = '0x2e765468e8CCe070117608FBa390dF61Cd293C50';
-const authorAddress = '0x16ea840cfA174FdAC738905C4E5dB59Fd86912a1';
+//main.jsの実行前にDynamicRoundRobinにLINKトークン(継承あたり1link)を送ること!!
+
+const destination = process.env.DESTINATION;
+const contractAddr = "ROUNDROBIN_CONTRACT_ADDRESS";
 
 async function main() {
-  const factory = await ethers.getContractFactory("APIConsumer");
-  const contract = await factory.deploy();
-  console.log("NFT Deployed to:", contract.address);
-  const res = await contract.toString(0x000000000000000000000000000000000000000000000000746f6d6f6b696e67);
-  console.log(res);
+  const factory = await ethers.getContractFactory("DynamicRoundRobin");
+  const RoundRobin = await factory.attach(contractAddr);
+  console.log("NFT Deployed to:", RoundRobin.address);
+  const MintTx = await RoundRobin.createPlainRobin();
+  await MintTx.wait();
+  const MintTx1 = await RoundRobin.Inherit(destination, 0);
+  await MintTx1.wait();
+  const uri = await RoundRobin.tokenURI(0);
+  console.log(uri);
 }
+
 main()
   .then(() => process.exit(0))
   .catch((error) => {

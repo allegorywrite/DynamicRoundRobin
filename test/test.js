@@ -8,11 +8,7 @@ let addr3;
 let addr4;
 let addrs;
 let RoundRobin;
-let APIConsumer;
 let RoundRobinFactory;
-let APIConsumerFactory;
-let ChainlinkClientFactory;
-let ChainlinkClient;
 
 describe("ToString Test", () => {
   it("should pass", async () => {
@@ -31,16 +27,9 @@ describe("Main Test", () => {
     RoundRobinFactory = await ethers.getContractFactory(
       "DynamicRoundRobin"
     );
-    APIConsumerFactory = await ethers.getContractFactory(
-      "APIConsumer"
-    );
-    ChainlinkClientFactory = await ethers.getContractFactory(
-      "ChainlinkClient"
-    );
     [owner, addr1, addr2, addr3, addr4, ...addrs] = await ethers.getSigners();
     RoundRobin = await RoundRobinFactory.deploy("initialUri");
-    APIConsumer = await APIConsumerFactory.deploy();
-    ChainlinkClient = await ChainlinkClientFactory.deploy();
+
   })
 
   describe("Transaction Test", () => {
