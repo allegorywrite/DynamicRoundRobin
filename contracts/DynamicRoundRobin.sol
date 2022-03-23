@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@chainlink/contracts/src/v0.8/ChainlinkClient.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 /**
  * @title ダイナミック傘連判状
@@ -16,6 +17,7 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
     using Chainlink for Chainlink.Request;
     using SafeMath for uint256;
     using Counters for Counters.Counter;
+    using Strings for uint256;
 
     Counters.Counter private _robinCounter;
 
@@ -28,12 +30,15 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
     mapping(uint256 => mapping (uint256 => string)) Successors; 
     //@notice ロビンごとのグレード
     mapping(uint256 => Rarity) public tokenIdToRarity;
+    mapping(uint256 => address) toAddr;
+    mapping(uint256 => string) strToAddr;
 
     //ユーザーデータ
     bytes32 public data;
     string private _initialUri;
     string private robinUri;
     string private successor = "tomoking";
+    string private baseUrl = "https://testnets-api.opensea.io/api/v1/assets?format=json&limit=1&offset=0&order_direction=desc&owner=";
 
     //Chainlinknode情報
     address private oracle;
@@ -49,7 +54,7 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
       // Oracle address here
       oracle = 0xD8269ebfE7fCdfCF6FaB16Bb4A782dC8Ab59b53C;
       // Job Id here
-      jobId = "09f1fff2c5374f5bb98052a4ac833571";
+      jobId = "b7f00319f7984f269e7a0c90d6fd9bca";
       fee = 0.1 * 10 ** 18; 
     }
 
@@ -65,7 +70,7 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
       tokenIdToRarity[_RobinId] = initialEigenVal;
       RobinsToSuccessors[_RobinId] = 0;
 
-      _safeMint(msg.sender, _RobinId);
+      _safeMint(_msgSender(), _RobinId);
       _setTokenURI(_RobinId, _initialUri);
 
       _robinCounter.increment();
@@ -84,9 +89,9 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
       RobinsToSuccessors[_RobinId] = 1;
       uint256 successorId = RobinsToSuccessors[_RobinId];
 
-      _safeMint(msg.sender, _RobinId);
+      _safeMint(_msgSender(), _RobinId);
       _setTokenURI(_RobinId, _initialUri);
-      _change(successorId, _RobinId);
+      _change(successorId, _RobinId, _msgSender());
 
       RobinsToSuccessors[_RobinId] = RobinsToSuccessors[_RobinId].add(1);
       _robinCounter.increment();
@@ -105,8 +110,7 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
     ) public {
       uint256 successorId = RobinsToSuccessors[robinId];
       RobinsToSuccessors[robinId] = RobinsToSuccessors[robinId].add(1);
-
-      _change(successorId, robinId);
+      _change(successorId, robinId, to);
       transferFrom(_msgSender(), to, robinId);
     }
 
@@ -118,9 +122,10 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
     * @dev url => _setTokenURI
     *      successor => Successors
     */
-    function _change(uint256 successorId, uint256 robinId) private {
+    function _change(uint256 successorId, uint256 robinId, address to) private {
+      toAddr[robinId] = to;
       currentRobinId = robinId;
-      requestData();
+      requestData(robinId);
       _grading(robinId, successorId);
     }
 
@@ -148,12 +153,13 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
     * @dev requestの経路 DynamicRountRobin => ChainlinkClient => Oracle
     * => Job(Chainlinknode) => api
     */
-    function requestData() public returns (bytes32 requestId) 
+    function requestData(uint256 id) public returns (bytes32 requestId) 
     {
         Chainlink.Request memory request = buildChainlinkRequest(jobId, address(this), this.fulfill.selector);
-        
-        request.add("get", "API_URL");
-        request.add("path", "JSON_PATH");
+
+        strToAddr[id] = addressToString(toAddr[id]);
+        request.add("get", string(abi.encodePacked(strToAddr[id],baseUrl)));
+        request.add("path", "assets,0,asset_contract,address");
 
         int timesAmount = 10**18;
         request.addInt("times", timesAmount);
@@ -178,6 +184,10 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
         _setTokenURI(currentRobinId, robinUri);
     }
 
+    // function multiFulfill(bytes32 _requestId, bytes32 _uri1, bytes32 _uri2, bytes32 _usename){
+
+    // }
+
     /*
     * @title toString
     * @notice bytes32 => string
@@ -196,6 +206,18 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
         }
         return string(bytesArray);
     }
+
+    /*
+    * @title addressToString
+    * @notice address => string
+    * @param _addr 継承先のアドレス
+    * @return string apiurlに利用するアドレス文字列
+    */
+    function addressToString(address _addr) public pure returns(string memory) 
+    {
+      string memory result = Strings.toHexString(uint256(uint160(_addr)), 20);
+      return result;
+    }    
 
     function getSuccessors(uint256 robinId) public view returns(uint256){
       return RobinsToSuccessors[robinId].sub(1);

@@ -1,7 +1,7 @@
 //main.jsの実行前にDynamicRoundRobinにLINKトークン(継承あたり1link)を送ること!!
 
-const destination = process.env.DESTINATION;
-const contractAddr = "ROUNDROBIN_CONTRACT_ADDRESS";
+const destination = "0x16ea840cfA174FdAC738905C4E5dB59Fd86912a1";
+const contractAddr = "0xB83693C9894159423888450AB02E369113fb5542";
 
 async function main() {
   const factory = await ethers.getContractFactory("DynamicRoundRobin");

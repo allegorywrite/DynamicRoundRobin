@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
+import "@openzeppelin/contracts/utils/Strings.sol";
 
 contract ToString {
-
+  using Strings for uint256;
+  
   function bytes32ToBytes(bytes32 _bytes32) public pure returns (bytes memory){
         bytes memory bytesArray = new bytes(32);
         for (uint256 i; i < 32; i++) {
@@ -34,4 +36,10 @@ contract ToString {
     string memory out = string(abi.encodePacked(_bytes32));
     return out;
   }
+
+  function addressToString(address addr) public pure returns(string memory) 
+  {
+    string memory result = Strings.toHexString(uint256(uint160(addr)), 20);
+    return result;
+  }    
 }
