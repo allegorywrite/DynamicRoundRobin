@@ -1,6 +1,6 @@
 const hre = require("hardhat");
 
-const initialUri = "https://ipfs.io/ipfs/QmYouRy6h83ifpmTx4MpN6rhg3ByCxhDBCAYsBFWPngjhX?filename=metadata2.json";
+const initialUri = "https://ipfs.moralis.io:2053/ipfs/QmRiuXrWe9RWGtoHcBjcjgzqx8bcxZ2jXfjsZPudforCPv/metadata/0000000000000000000000000000000000000000000000000000000000000001.json";
 
 async function main() {
   const factory = await hre.ethers.getContractFactory("DynamicRoundRobin");

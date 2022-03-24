@@ -35,7 +35,7 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
 
     //ユーザーデータ
     bytes32 public data;
-    string private _initialUri;
+    string private _transitionUri;
     string private robinUri;
     string private successor = "tomoking";
     string private baseUrl = "https://testnets-api.opensea.io/api/v1/assets?format=json&limit=1&offset=0&order_direction=desc&owner=";
@@ -49,7 +49,7 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
 
     //@title コンストラクタ
     constructor(string memory initialUri_)ERC721("RoundRobin","Robin"){
-      _initialUri = initialUri_;
+      _transitionUri = initialUri_;
       setPublicChainlinkToken();
       // Oracle address here
       oracle = 0xD8269ebfE7fCdfCF6FaB16Bb4A782dC8Ab59b53C;
@@ -71,7 +71,7 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
       RobinsToSuccessors[_RobinId] = 0;
 
       _safeMint(_msgSender(), _RobinId);
-      _setTokenURI(_RobinId, _initialUri);
+      _setTokenURI(_RobinId, _transitionUri);
 
       _robinCounter.increment();
     }
@@ -90,7 +90,7 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
       uint256 successorId = RobinsToSuccessors[_RobinId];
 
       _safeMint(_msgSender(), _RobinId);
-      _setTokenURI(_RobinId, _initialUri);
+      _setTokenURI(_RobinId, _transitionUri);
       _change(successorId, _RobinId, _msgSender());
 
       RobinsToSuccessors[_RobinId] = RobinsToSuccessors[_RobinId].add(1);
@@ -108,6 +108,7 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
       address to,
       uint256 robinId
     ) public {
+      _setTokenURI(robinId, _transitionUri);
       uint256 successorId = RobinsToSuccessors[robinId];
       RobinsToSuccessors[robinId] = RobinsToSuccessors[robinId].add(1);
       _change(successorId, robinId, to);
