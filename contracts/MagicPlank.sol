@@ -53,7 +53,7 @@ contract MagicPlank is ERC721URIStorage, ChainlinkClient, Ownable {
       // Oracle address here
       oracle = 0xD8269ebfE7fCdfCF6FaB16Bb4A782dC8Ab59b53C;
       // Job Id here
-      jobId = "d37cb8e307b24096b906b85a46e97b08";
+      jobId = "03b95463411147809d511c9664b00e01";
       fee = 0.1 * 10 ** 18; 
     }
 
@@ -155,13 +155,13 @@ contract MagicPlank is ERC721URIStorage, ChainlinkClient, Ownable {
     */
     function requestData(uint256 id) public returns (bytes32 requestId) 
     {
-        Chainlink.Request memory request = buildChainlinkRequest(jobId, address(this), this.fulfill.selector);
+        Chainlink.Request memory request = buildChainlinkRequest(jobId, address(this), this.multiFulfill.selector);
 
         strToAddr[id] = addressToString(toAddr[id]);
         request.add("get", string(abi.encodePacked(baseUrl, strToAddr[id])));
-        request.add("path_furi", "assets,0,asset_contract,address");
-        request.add("path_luri", "assets,0,asset_contract,address");
-        request.add("path_name", "assets,0,asset_contract,address");
+        request.add("path_image", "assets,0,image_url");
+        request.add("path_address", "assets,0,owner,address");
+        request.add("path_name", "assets,0,owner,user,username");
 
         int timesAmount = 10**18;
         request.addInt("times", timesAmount);
