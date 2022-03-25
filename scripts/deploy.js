@@ -1,9 +1,9 @@
 const hre = require("hardhat");
 
-const initialUri = "https://ipfs.moralis.io:2053/ipfs/QmRiuXrWe9RWGtoHcBjcjgzqx8bcxZ2jXfjsZPudforCPv/metadata/0000000000000000000000000000000000000000000000000000000000000001.json";
+const initialUri = "https://ipfs.moralis.io:2053/ipfs/Qme6DxdoYJLifLgv5bTNBWc23SPRY39HdxuTRVZ2to6ubF/metadata/0000000000000000000000000000000000000000000000000000000000000001.json";
 
 async function main() {
-  const factory = await hre.ethers.getContractFactory("DynamicRoundRobin");
+  const factory = await hre.ethers.getContractFactory("MagicPlank");
   const RoundRobin = await factory.deploy(initialUri);
   await RoundRobin.deployed();
   console.log("NFT deployed to:", RoundRobin.address);

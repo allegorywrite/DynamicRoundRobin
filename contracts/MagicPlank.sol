@@ -13,7 +13,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
  * @author tomoking
  * @notice ERC721
  */
-contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
+contract MagicPlank is ERC721URIStorage, ChainlinkClient, Ownable {
     using Chainlink for Chainlink.Request;
     using SafeMath for uint256;
     using Counters for Counters.Counter;
@@ -27,7 +27,7 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
     //@notice ロビンごとの継承者数
     mapping(uint256 => uint256) RobinsToSuccessors;
     //@notice ロビンごとの継承者名マッピング
-    mapping(uint256 => mapping (uint256 => string)) Successors; 
+    mapping(uint256 => string) Successors; 
     //@notice ロビンごとのグレード
     mapping(uint256 => Rarity) public tokenIdToRarity;
     mapping(uint256 => address) toAddr;
@@ -37,7 +37,6 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
     bytes32 public data;
     string private _transitionUri;
     string private robinUri;
-    string private successor = "tomoking";
     string private baseUrl = "https://testnets-api.opensea.io/api/v1/assets?format=json&limit=1&offset=0&order_direction=desc&owner=";
 
     //Chainlinknode情報
@@ -48,22 +47,22 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
     uint256 private currentRobinId;
 
     //@title コンストラクタ
-    constructor(string memory initialUri_)ERC721("RoundRobin","Robin"){
+    constructor(string memory initialUri_)ERC721("MagicPlank","MP"){
       _transitionUri = initialUri_;
       setPublicChainlinkToken();
       // Oracle address here
       oracle = 0xD8269ebfE7fCdfCF6FaB16Bb4A782dC8Ab59b53C;
       // Job Id here
-      jobId = "b7f00319f7984f269e7a0c90d6fd9bca";
+      jobId = "d37cb8e307b24096b906b85a46e97b08";
       fee = 0.1 * 10 ** 18; 
     }
 
     /*
-    * @title createPlainRobin
+    * @title createPlainPlank
     * @notice ロビンのMintとinitialURIの設定
     * @dev RobinIdはCounterを使用
     */
-    function createPlainRobin() public {
+    function createPlainPlank() public {
       //準備
       uint256 _RobinId = _robinCounter.current();
       Rarity initialEigenVal = Rarity(0);
@@ -81,7 +80,7 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
     * @notice ロビンのMintと継承
     * @dev RobinIdはCounterを使用
     */
-    function createRobin() public {
+    function createPlank() public {
       //準備
       uint256 _RobinId = _robinCounter.current();
       Rarity initialEigenVal = Rarity(0);
@@ -159,8 +158,10 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
         Chainlink.Request memory request = buildChainlinkRequest(jobId, address(this), this.fulfill.selector);
 
         strToAddr[id] = addressToString(toAddr[id]);
-        request.add("get", string(abi.encodePacked(strToAddr[id],baseUrl)));
-        request.add("path", "assets,0,asset_contract,address");
+        request.add("get", string(abi.encodePacked(baseUrl, strToAddr[id])));
+        request.add("path_furi", "assets,0,asset_contract,address");
+        request.add("path_luri", "assets,0,asset_contract,address");
+        request.add("path_name", "assets,0,asset_contract,address");
 
         int timesAmount = 10**18;
         request.addInt("times", timesAmount);
@@ -181,13 +182,44 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
         //データの分岐
         //ToDo
         robinUri = toString(data);
-        // successor = bytes32ToString(successor_byte32);
         _setTokenURI(currentRobinId, robinUri);
     }
 
-    // function multiFulfill(bytes32 _requestId, bytes32 _uri1, bytes32 _uri2, bytes32 _usename){
+    function testfulfill(bytes32 _data) public
+    {
+        data = _data;
+        //データの分岐
+        //ToDo
+        robinUri = toString(data);
+        _setTokenURI(currentRobinId, robinUri);
+    }
 
-    // }
+    /*
+    * @title multiFulfill
+    * @notice apiから複数データを受け取ってコントラクトに格納する関数
+    * @param _requestId 
+    * @param _data bytes32のデータ群
+    * @dev ChainlinkClientがこの関数を呼び出すことをbuildChainlinkRequest()で設定
+    */
+    function multiFulfill(
+      bytes32 _requestId, bytes32 _uri1, bytes32 _uri2, bytes32 _username
+      ) public recordChainlinkFulfillment(_requestId){
+        string memory StrUri1 = toString(_uri1);
+        string memory StrUri2 = toString(_uri2);
+        Successors[currentRobinId] = toString(_username);
+        robinUri = string(abi.encodePacked("https://ipfs.moralis.io:2053/ipfs/", StrUri1, StrUri2));
+        _setTokenURI(currentRobinId, robinUri);
+    }
+
+    function testmultiFulfill(
+      bytes32 _uri1, bytes32 _uri2, bytes32 _username
+      ) public {
+        string memory StrUri1 = toString(_uri1);
+        string memory StrUri2 = toString(_uri2);
+        Successors[currentRobinId] = toString(_username);
+        robinUri = string(abi.encodePacked("https://ipfs.moralis.io:2053/ipfs/", StrUri1, StrUri2));
+        _setTokenURI(currentRobinId, robinUri);
+    }
 
     /*
     * @title toString
@@ -228,7 +260,7 @@ contract DynamicRoundRobin is ERC721URIStorage, ChainlinkClient, Ownable {
       return tokenIdToRarity[robinId];
     }
 
-    function getSuccessorName(uint256 robinId, uint256 successorId) public view returns(string memory){
-      return Successors[robinId][successorId];
+    function getSuccessorName(uint256 robinId) public view returns(string memory){
+      return Successors[robinId];
     }
 }

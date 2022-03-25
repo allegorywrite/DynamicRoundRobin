@@ -1,0 +1,52 @@
+type = "directrequest"
+schemaVersion = 1
+name = "Get > Byte32"
+maxTaskDuration = "0s"
+contractAddress = "0xD8269ebfE7fCdfCF6FaB16Bb4A782dC8Ab59b53C"
+minIncomingConfirmations = 0
+observationSource = """
+    decode_log   [type="ethabidecodelog"
+                  abi="OracleRequest(bytes32 indexed specId, address requester, bytes32 requestId, uint256 payment, address callbackAddr, bytes4 callbackFunctionId, uint256 cancelExpiration, uint256 dataVersion, bytes data)"
+                  data="$(jobRun.logData)"
+                  topics="$(jobRun.logTopics)"]
+
+    decode_cbor  [type="cborparse" data="$(decode_log.data)"]
+    fetch_opensea   [type="http" method=GET url="$(decode_cbor.get)"]
+
+    decode_log -> decode_cbor -> fetch_opensea
+
+    fetch_opensea -> parse_image
+    fetch_opensea -> parse_address
+    fetch_opensea -> parse_name
+
+    parse_image  [type="jsonparse" path="$(decode_cbor.path_image)" data="$(fetch_opensea)"]
+    parse_address  [type="jsonparse" path="$(decode_cbor.path_address)" data="$(fetch_opensea)"]
+    parse_name  [type="jsonparse" path="$(decode_cbor.path_name)" data="$(fetch_opensea)"]
+
+    parse_image -> generate
+    parse_address -> generate
+    parse_name -> generate
+
+    generate  [type=bridge name="magic" requestData="{\\"data\\":{\\"image\\": $(parse_image),\\"address\\":$(parse_address),\\"name\\": $(parse_name)}}"]
+
+    generate -> parse_furi
+    generate -> parse_luri
+    generate -> parse_bname
+
+    parse_furi  [type="jsonparse" path="data,furi" data="$(generate)"]
+    parse_luri  [type="jsonparse" path="data,luri" data="$(generate)"]
+    parse_bname  [type="jsonparse" path="data,name" data="$(generate)"]
+
+    parse_furi -> encode_data
+    parse_luri -> encode_data
+    parse_bname -> encode_data
+
+    encode_data  [type="ethabiencode" abi="(bytes32 furi, bytes32 luri, bytes32 name)" data="{ \\"furi\\": $(parse_furi), \\"luri\\": $(parse_luri), \\"name\\": $(parse_bname) }"]
+    encode_tx    [type="ethabiencode"
+                  abi="fulfillOracleRequest(bytes32 requestId, uint256 payment, address callbackAddress, bytes4 callbackFunctionId, uint256 expiration, bytes32 data)"
+                  data="{\\"requestId\\": $(decode_log.requestId), \\"payment\\": $(decode_log.payment), \\"callbackAddress\\": $(decode_log.callbackAddr), \\"callbackFunctionId\\": $(decode_log.callbackFunctionId), \\"expiration\\": $(decode_log.cancelExpiration), \\"data\\": $(encode_data)}"
+                 ]
+    submit_tx    [type="ethtx" to="0xD8269ebfE7fCdfCF6FaB16Bb4A782dC8Ab59b53C" data="$(encode_tx)"]
+
+    encode_data -> encode_tx -> submit_tx
+"""
