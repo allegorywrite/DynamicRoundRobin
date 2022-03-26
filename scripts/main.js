@@ -1,7 +1,7 @@
 //main.jsの実行前にDynamicRoundRobinにLINKトークン(継承あたり1link)を送ること!!
 
 const destination = "0x16ea840cfA174FdAC738905C4E5dB59Fd86912a1";
-const contractAddr = "0x594Db0413ee52388eCC46C9DF7eaADf7B1c7CFd4";
+const contractAddr = "0x92daB851503942B5cb0164772CEEC6eF2E51e3D4";
 
 async function main() {
   const factory = await ethers.getContractFactory("MagicPlank");
