@@ -34,14 +34,18 @@ contract MagicPlank is ERC721URIStorage, ChainlinkClient, Ownable {
     mapping(uint256 => string) strToAddr;
 
     //ユーザーデータ
-    bytes32 public data;
+    bytes32 public furi;
+    bytes32 public luri;
+    bytes32 public uname;
     string private _transitionUri;
     string private robinUri;
     string private baseUrl = "https://testnets-api.opensea.io/api/v1/assets?format=json&limit=1&offset=0&order_direction=desc&owner=";
 
     //Chainlinknode情報
     address private oracle;
-    bytes32 private jobId;
+    bytes32 private furi_jobId;
+    bytes32 private luri_jobId;
+    bytes32 private name_jobId;
     uint256 private fee;
 
     uint256 private currentRobinId;
@@ -51,10 +55,10 @@ contract MagicPlank is ERC721URIStorage, ChainlinkClient, Ownable {
       _transitionUri = initialUri_;
       setPublicChainlinkToken();
       // Oracle address here
-      oracle = 0xD8269ebfE7fCdfCF6FaB16Bb4A782dC8Ab59b53C;
+      oracle = 0x790E357227fa5936b894cBB7eb2Db8F10eddfD6b;
       // Job Id here
-      jobId = "03b95463411147809d511c9664b00e01";
-      fee = 0.1 * 10 ** 18; 
+      furi_jobId = "c2e769e6008c427eb215508a46eee9f3";
+      fee = 1 * 10 ** 18; 
     }
 
     /*
@@ -125,7 +129,9 @@ contract MagicPlank is ERC721URIStorage, ChainlinkClient, Ownable {
     function _change(uint256 successorId, uint256 robinId, address to) private {
       toAddr[robinId] = to;
       currentRobinId = robinId;
-      requestData(robinId);
+      requestfUri(robinId);
+      requestlUri(robinId);
+      requestName(robinId);
       _grading(robinId, successorId);
     }
 
@@ -153,9 +159,9 @@ contract MagicPlank is ERC721URIStorage, ChainlinkClient, Ownable {
     * @dev requestの経路 DynamicRountRobin => ChainlinkClient => Oracle
     * => Job(Chainlinknode) => api
     */
-    function requestData(uint256 id) public returns (bytes32 requestId) 
+    function requestfUri(uint256 id) public returns (bytes32 requestId) 
     {
-        Chainlink.Request memory request = buildChainlinkRequest(jobId, address(this), this.multiFulfill.selector);
+        Chainlink.Request memory request = buildChainlinkRequest(furi_jobId, address(this), this.fulfillfUri.selector);
 
         strToAddr[id] = addressToString(toAddr[id]);
         request.add("get", string(abi.encodePacked(baseUrl, strToAddr[id])));
@@ -163,8 +169,45 @@ contract MagicPlank is ERC721URIStorage, ChainlinkClient, Ownable {
         request.add("path_address", "assets,0,owner,address");
         request.add("path_name", "assets,0,owner,user,username");
 
-        int timesAmount = 10**18;
-        request.addInt("times", timesAmount);
+        return sendChainlinkRequestTo(oracle, request, fee);
+    }
+
+    /*
+    * @title requestData
+    * @notice apiにデータ取得をリクエスト
+    * @return requestId 
+    * @dev requestの経路 DynamicRountRobin => ChainlinkClient => Oracle
+    * => Job(Chainlinknode) => api
+    */
+    function requestlUri(uint256 id) public returns (bytes32 requestId) 
+    {
+        Chainlink.Request memory request = buildChainlinkRequest(luri_jobId, address(this), this.fulfilllUri.selector);
+
+        strToAddr[id] = addressToString(toAddr[id]);
+        request.add("get", string(abi.encodePacked(baseUrl, strToAddr[id])));
+        request.add("path_image", "assets,0,image_url");
+        request.add("path_address", "assets,0,owner,address");
+        request.add("path_name", "assets,0,owner,user,username");
+
+        return sendChainlinkRequestTo(oracle, request, fee);
+    }
+
+    /*
+    * @title requestData
+    * @notice apiにデータ取得をリクエスト
+    * @return requestId 
+    * @dev requestの経路 DynamicRountRobin => ChainlinkClient => Oracle
+    * => Job(Chainlinknode) => api
+    */
+    function requestName(uint256 id) public returns (bytes32 requestId) 
+    {
+        Chainlink.Request memory request = buildChainlinkRequest(name_jobId, address(this), this.fulfillName.selector);
+
+        strToAddr[id] = addressToString(toAddr[id]);
+        request.add("get", string(abi.encodePacked(baseUrl, strToAddr[id])));
+        request.add("path_image", "assets,0,image_url");
+        request.add("path_address", "assets,0,owner,address");
+        request.add("path_name", "assets,0,owner,user,username");
 
         return sendChainlinkRequestTo(oracle, request, fee);
     }
@@ -176,22 +219,21 @@ contract MagicPlank is ERC721URIStorage, ChainlinkClient, Ownable {
     * @param _data bytes32のデータ群
     * @dev ChainlinkClientがこの関数を呼び出すことをbuildChainlinkRequest()で設定
     */
-    function fulfill(bytes32 _requestId, bytes32 _data) public recordChainlinkFulfillment(_requestId)
+    function fulfillfUri(bytes32 _requestId, bytes32 _data) public recordChainlinkFulfillment(_requestId)
     {
-        data = _data;
+        furi = _data;
         //データの分岐
         //ToDo
-        robinUri = toString(data);
-        _setTokenURI(currentRobinId, robinUri);
+        // robinUri = toString(data);
+        // _setTokenURI(currentRobinId, robinUri);
     }
 
-    function testfulfill(bytes32 _data) public
-    {
-        data = _data;
-        //データの分岐
-        //ToDo
-        robinUri = toString(data);
-        _setTokenURI(currentRobinId, robinUri);
+    function fulfilllUri(bytes32 _requestId, bytes32 _data) public recordChainlinkFulfillment(_requestId){
+      luri = _data;
+    }
+
+    function fulfillName(bytes32 _requestId, bytes32 _data) public recordChainlinkFulfillment(_requestId){
+      uname = _data;
     }
 
     /*
@@ -204,16 +246,6 @@ contract MagicPlank is ERC721URIStorage, ChainlinkClient, Ownable {
     function multiFulfill(
       bytes32 _requestId, bytes32 _uri1, bytes32 _uri2, bytes32 _username
       ) public recordChainlinkFulfillment(_requestId){
-        string memory StrUri1 = toString(_uri1);
-        string memory StrUri2 = toString(_uri2);
-        Successors[currentRobinId] = toString(_username);
-        robinUri = string(abi.encodePacked("https://ipfs.moralis.io:2053/ipfs/", StrUri1, StrUri2));
-        _setTokenURI(currentRobinId, robinUri);
-    }
-
-    function testmultiFulfill(
-      bytes32 _uri1, bytes32 _uri2, bytes32 _username
-      ) public {
         string memory StrUri1 = toString(_uri1);
         string memory StrUri2 = toString(_uri2);
         Successors[currentRobinId] = toString(_username);

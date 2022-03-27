@@ -19,7 +19,7 @@ contract APIConsumer is ChainlinkClient {
         // Oracle address here
         oracle = 0xD8269ebfE7fCdfCF6FaB16Bb4A782dC8Ab59b53C;
         // Job Id here
-        jobId = "09f1fff2c5374f5bb98052a4ac833571";
+        jobId = "c2e769e6008c427eb215508a46eee9f3";
         fee = 0.1 * 10 ** 18; 
     }
     
