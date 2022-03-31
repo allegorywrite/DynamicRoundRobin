@@ -34,9 +34,7 @@ contract MagicPlank is ERC721URIStorage, ChainlinkClient, Ownable {
     mapping(uint256 => string) strToAddr;
 
     //ユーザーデータ
-    bytes32 public furi;
-    bytes32 public luri;
-    bytes32 public uname;
+    string public strData;
     string private _transitionUri;
     string private robinUri;
     string private baseUrl = "https://testnets-api.opensea.io/api/v1/assets?format=json&limit=1&offset=0&order_direction=desc&owner=";
@@ -72,11 +70,10 @@ contract MagicPlank is ERC721URIStorage, ChainlinkClient, Ownable {
       Rarity initialEigenVal = Rarity(0);
       tokenIdToRarity[_RobinId] = initialEigenVal;
       RobinsToSuccessors[_RobinId] = 0;
+      _robinCounter.increment();
 
       _safeMint(_msgSender(), _RobinId);
       _setTokenURI(_RobinId, _transitionUri);
-
-      _robinCounter.increment();
     }
 
     /*
@@ -91,18 +88,17 @@ contract MagicPlank is ERC721URIStorage, ChainlinkClient, Ownable {
       tokenIdToRarity[_RobinId] = initialEigenVal;
       RobinsToSuccessors[_RobinId] = 1;
       uint256 successorId = RobinsToSuccessors[_RobinId];
+      RobinsToSuccessors[_RobinId] = RobinsToSuccessors[_RobinId].add(1);
+      _robinCounter.increment();
 
       _safeMint(_msgSender(), _RobinId);
       _setTokenURI(_RobinId, _transitionUri);
       _change(successorId, _RobinId, _msgSender());
-
-      RobinsToSuccessors[_RobinId] = RobinsToSuccessors[_RobinId].add(1);
-      _robinCounter.increment();
     }
 
     /*
     * @title Inherit
-    * @notice ロビンの継承
+    * @notice ロビンの継承※テスト用！
     * @param to 継承先のアドレス
     * @param robinId 継承するロビンのId
     * @dev ConsumerApiからprofileを取得して格納
@@ -111,12 +107,36 @@ contract MagicPlank is ERC721URIStorage, ChainlinkClient, Ownable {
       address to,
       uint256 robinId
     ) public {
-      _setTokenURI(robinId, _transitionUri);
       uint256 successorId = RobinsToSuccessors[robinId];
       RobinsToSuccessors[robinId] = RobinsToSuccessors[robinId].add(1);
+
+      _setTokenURI(robinId, _transitionUri);
       _change(successorId, robinId, to);
       transferFrom(_msgSender(), to, robinId);
     }
+
+    /*
+    * @title _beforeTokenTransfer
+    * @notice OpenseaのSell連動用
+    * @param from 継承元のアドレス
+    * @param to 継承先のアドレス
+    * @param robinId 継承するロビンのId
+    * @dev Mint時には実行されない
+    */
+    // function _beforeTokenTransfer (
+    //   address from,
+    //   address to,
+    //   uint256 robinId
+    // ) internal virtual override {
+    //   if(from != address(0)){
+    //     super._beforeTokenTransfer(from, to, robinId);
+    //     uint256 successorId = RobinsToSuccessors[robinId];
+    //     RobinsToSuccessors[robinId] = RobinsToSuccessors[robinId].add(1);
+
+    //     _setTokenURI(robinId, _transitionUri);
+    //     _change(successorId, robinId, to);
+    //   }
+    // }
 
     /*
     * @title _change
@@ -129,9 +149,7 @@ contract MagicPlank is ERC721URIStorage, ChainlinkClient, Ownable {
     function _change(uint256 successorId, uint256 robinId, address to) private {
       toAddr[robinId] = to;
       currentRobinId = robinId;
-      requestfUri(robinId);
-      requestlUri(robinId);
-      requestName(robinId);
+      requestData(robinId);
       _grading(robinId, successorId);
     }
 
@@ -159,49 +177,9 @@ contract MagicPlank is ERC721URIStorage, ChainlinkClient, Ownable {
     * @dev requestの経路 DynamicRountRobin => ChainlinkClient => Oracle
     * => Job(Chainlinknode) => api
     */
-    function requestfUri(uint256 id) public returns (bytes32 requestId) 
+    function requestData(uint256 id) public returns (bytes32 requestId) 
     {
-        Chainlink.Request memory request = buildChainlinkRequest(furi_jobId, address(this), this.fulfillfUri.selector);
-
-        strToAddr[id] = addressToString(toAddr[id]);
-        request.add("get", string(abi.encodePacked(baseUrl, strToAddr[id])));
-        request.add("path_image", "assets,0,image_url");
-        request.add("path_address", "assets,0,owner,address");
-        request.add("path_name", "assets,0,owner,user,username");
-
-        return sendChainlinkRequestTo(oracle, request, fee);
-    }
-
-    /*
-    * @title requestData
-    * @notice apiにデータ取得をリクエスト
-    * @return requestId 
-    * @dev requestの経路 DynamicRountRobin => ChainlinkClient => Oracle
-    * => Job(Chainlinknode) => api
-    */
-    function requestlUri(uint256 id) public returns (bytes32 requestId) 
-    {
-        Chainlink.Request memory request = buildChainlinkRequest(luri_jobId, address(this), this.fulfilllUri.selector);
-
-        strToAddr[id] = addressToString(toAddr[id]);
-        request.add("get", string(abi.encodePacked(baseUrl, strToAddr[id])));
-        request.add("path_image", "assets,0,image_url");
-        request.add("path_address", "assets,0,owner,address");
-        request.add("path_name", "assets,0,owner,user,username");
-
-        return sendChainlinkRequestTo(oracle, request, fee);
-    }
-
-    /*
-    * @title requestData
-    * @notice apiにデータ取得をリクエスト
-    * @return requestId 
-    * @dev requestの経路 DynamicRountRobin => ChainlinkClient => Oracle
-    * => Job(Chainlinknode) => api
-    */
-    function requestName(uint256 id) public returns (bytes32 requestId) 
-    {
-        Chainlink.Request memory request = buildChainlinkRequest(name_jobId, address(this), this.fulfillName.selector);
+        Chainlink.Request memory request = buildChainlinkRequest(furi_jobId, address(this), this.multiFulfill.selector);
 
         strToAddr[id] = addressToString(toAddr[id]);
         request.add("get", string(abi.encodePacked(baseUrl, strToAddr[id])));
@@ -219,21 +197,9 @@ contract MagicPlank is ERC721URIStorage, ChainlinkClient, Ownable {
     * @param _data bytes32のデータ群
     * @dev ChainlinkClientがこの関数を呼び出すことをbuildChainlinkRequest()で設定
     */
-    function fulfillfUri(bytes32 _requestId, bytes32 _data) public recordChainlinkFulfillment(_requestId)
+    function fulfill(bytes32 _requestId, bytes32 _data) public recordChainlinkFulfillment(_requestId)
     {
-        furi = _data;
-        //データの分岐
-        //ToDo
-        // robinUri = toString(data);
-        // _setTokenURI(currentRobinId, robinUri);
-    }
-
-    function fulfilllUri(bytes32 _requestId, bytes32 _data) public recordChainlinkFulfillment(_requestId){
-      luri = _data;
-    }
-
-    function fulfillName(bytes32 _requestId, bytes32 _data) public recordChainlinkFulfillment(_requestId){
-      uname = _data;
+        strData = toString(_data);
     }
 
     /*
